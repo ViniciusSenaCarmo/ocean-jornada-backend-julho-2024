@@ -1,38 +1,86 @@
 const express = require('express')
+const { MongoClient } = require('mongodb')
 const app = express()
 
-app.get('/', function (req, res) {
-  res.send('Hello World')
-})
+const dbUrl = 'mongodb+srv://admin:nMWfAyt6z1b1DsSx@cluster0.iieeuwd.mongodb.net'
+const dbName = 'ocean-jornada-backend'
 
-// Desafio: criar endpoint /oi que exibe "Olá, mundo!"
-app.get('/oi', function (req, res) {
+const client = new MongoClient(dbUrl)
+
+async function main() {
+  console.log('Conectando ao banco de dados...')
+  await client.connect()
+  console.log('Banco de dados conectado com sucesso!')
+
+  app.get('/', function (req, res) {
+    res.send('Hello World')
+  })
+
+  // Desafio: criar endpoint /oi que exibe "Olá, mundo!"
+  app.get('/oi', function (req, res) {
     res.send('Olá, mundo!')
   })
-  
+
   // Lista de personagens
   const lista = ['Rick Sanchez', 'Morty Smith', 'Summer Smith']
 
+  const db = client.db(dbName)
+  const collection = db.collection('item')
   //Red All - [GeT] /item
-  app.get ('/item', function (req, res) {
-    //pegamos a lista e enviamos como resposta HTTP
-    res.send(lista)
+  app.get('/item', async function (req, res) {
+
+  //Obter todos os documentos da collection
+    const documentos = await collection.find().toArray()
+
+    //pegamos a lista e enviamos como resposta HTTP 
+    res.send(documentos)
   })
 
-  
+
   //sinalizamos para o Express que vamos usar JSON no Body
   app.use(express.json())
 
   //Create - [Post] /item
-  app.post('/item', function (req, res) {
+  app.post('/item', async function (req, res) {
     //obtemos o nome enviado no Request Body
-    const item = req.body.nome
-    
-    //Inserimos o item no final da lista
-    lista.push(item)
-    
-    //Enviamos uma mensagem de sucesso!
-    res.send('Item criado com sicesso!')
+    const item = req.body
+
+    //Inserimos o item na collection
+    await collection.insertOne(item)
+
+    //exibe o item que foi adicionado
+    res.send(item)
+  })
+
+  // REad By Id - [GET] /item/:id
+  app.get('/item/:id', function (req, res) {
+    // Acessamos o parâmetro rota ID
+    const id = req.params.id
+
+    //Acessamos o item na lista pelo índice corrigido (id - 1)
+    const item = lista[id - 1]
+
+    //Enviamos o item obtido como resposta
+    res.send(item)
+  })
+
+  // Update - [PUT] /item/:id
+  app.put('/item/:id', function (req, res) {
+
+    //Acessamos o ID do parâmetro de rota
+    const id = req.params.id
+
+    //Acessos o body da requisição, com dados
+    //a serem atualizados
+    const novoItem = req.body.nome
+
+    lista[id - 1] = novoItem
+
+    //Enviamos mensagem de sucesso
+    res.send('Item atualizado com sucesso:' + id)
   })
 
   app.listen(3000)
+}
+
+main()
